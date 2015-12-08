@@ -31,8 +31,6 @@ occur_check(V,T) :-
 	compound(T),
 	functor(T,N,A),
 	check(V,T,A),!
-	%arg(_,T,Z),
-	%V==Z.
 .
 
 check(V,T,A) :-
@@ -47,8 +45,28 @@ check(V,T,A) :-
 reduit(R, E, P, Q) :-
 	.
 
-regle((A ?= B),rename) :-
-	var(B),!.
+regle((X ?= T),rename) :-
+	var(T),!.
 
-regle((A ?= B),simplify) :-
-	atomic(B),! .
+regle((X ?= T),simplify) :-
+	atomic(T),!.
+	
+regle((X ?= T), check) :-
+	X \== T,
+	occur_check(X,T),!.
+	
+regle((X ?= T), expand) :-
+	compound(T),
+	not(occur_check(X,T)),!.
+	
+regle((S ?= T), decompose) :-
+	compound(S), compound(T),
+	functor(S,_,A1), functor(S,_,A2),
+	A1 == A2,!.
+	
+regle((T ?= X), orient) :-
+	nonvar(T),!.
+	
+regle((S ?= T), clash) :-
+	compound(S), compound(T), functor(S,_,A1), functor(T,_,A2), A1 \== A2,!;
+	compound(S), compound(T), functor(S,N1,_), functor(T,N2,_), N1 \== N2,!.
