@@ -27,10 +27,28 @@ decompose(E, P, Q) :-
 	union([L ?= I], K, Q).
 
 occur_check(V,T) :-
-	compound_name_arity(T,_,_),
-	arg(_,T,Z),
-	V==Z.
+	V==T -> !;
+	compound(T),
+	functor(T,N,A),
+	check(V,T,A),!
+	%arg(_,T,Z),
+	%V==Z.
+.
+
+check(V,T,A) :-
+	A==1 -> arg(1,T,X),
+	occur_check(V,X);
+	arg(A,T,X),
+	occur_check(V,X);
+	A2 is (A-1),
+	check(V,T,A2),!
+.
 
 reduit(R, E, P, Q) :-
 	.
 
+regle((A ?= B),rename) :-
+	var(B),!.
+
+regle((A ?= B),simplify) :-
+	atomic(B),! .
