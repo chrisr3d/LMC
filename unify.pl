@@ -30,17 +30,18 @@ occur_check(V,T) :-
 	V==T -> !;
 	compound(T),
 	functor(T,N,A),
-	check(V,T,A),!
-.
+	ocheck(V,T,A),!.
 
-check(V,T,A) :-
+ocheck(V,T,A) :-
 	A==1 -> arg(1,T,X),
 	occur_check(V,X);
 	arg(A,T,X),
 	occur_check(V,X);
 	A2 is (A-1),
-	check(V,T,A2),!
-.
+	ocheck(V,T,A2),!.
+
+check(V,T) :-
+	occur_check(V,T),!.
 
 reduit(R, E, P, Q) :-
 	.
@@ -61,7 +62,7 @@ regle((X ?= T), expand) :-
 	
 regle((S ?= T), decompose) :-
 	compound(S), compound(T),
-	functor(S,_,A1), functor(S,_,A2),
+	functor(S,_,A1), functor(T,_,A2),
 	A1 == A2,!.
 	
 regle((T ?= X), orient) :-
