@@ -43,31 +43,43 @@ ocheck(V,T,A) :-
 check(V,T) :-
 	occur_check(V,T),!.
 
-reduit(R, E, P, Q) :-
+% reduit(R,E,P,Q) :
+%	Transforme le système d'équations P en le système d'équations Q par application de la règle de transformation R à l'équation E.
+reduit(R, E, P, Q) :- 
 	.
 
+% regle(E,R) : 
+%	Détermine la règle de transformation R qui s'applique à l'équation E.
+
+% La règle Rename peut être appliquée à l'équation X = T si T est une variable.
 regle((X ?= T),rename) :-
 	var(T),!.
 
+% La règle Simplify peut être appliquée à l'équation X = T si T est une constante.
 regle((X ?= T),simplify) :-
 	atomic(T),!.
-	
+
+% Check est la règle qui intervient au niveau de l'équation X = T si X est différent de T et que X apparaît dans T
 regle((X ?= T), check) :-
 	X \== T,
 	occur_check(X,T),!.
-	
+
+% La règle Expand s'applique à l'équation X = T si T est composé et que X n'apparaît pas dans T
 regle((X ?= T), expand) :-
 	compound(T),
 	not(occur_check(X,T)),!.
-	
+
+% On peut décomposer une équation S = T lorsque S et T sont composés, et que S et T ont le même nombre d'arguments
 regle((S ?= T), decompose) :-
 	compound(S), compound(T),
 	functor(S,_,A1), functor(T,_,A2),
 	A1 == A2,!.
-	
+
+% La règle Orient est applicable à l'équation T = X lorsque T n'est pas une variable.
 regle((T ?= X), orient) :-
 	nonvar(T),!.
-	
+
+% La règle Clash est applicable à l'équation S = T lorsque S et T sont composés, et que soit S et T n'ont pas le même nombre d'arguments, soit n'ont pas le même nom.
 regle((S ?= T), clash) :-
-	compound(S), compound(T), functor(S,_,A1), functor(T,_,A2), A1 \== A2,!;
-	compound(S), compound(T), functor(S,N1,_), functor(T,N2,_), N1 \== N2,!.
+	compound(S), compound(T), functor(S,_,N1), functor(T,_,N2), N1 \== N2,!;
+	compound(S), compound(T), functor(S,A1,_), functor(T,A2,_), A1 \== A2,!.
