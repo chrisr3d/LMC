@@ -26,7 +26,8 @@ occur_check(V,T) :- V==T -> !; compound(T), functor(T,N,A), ocheck(V,T,A),!.
 
 ocheck(V,T,A) :- A==1 -> arg(1,T,X), occur_check(V,X); arg(A,T,X), occur_check(V,X); A2 is (A-1), ocheck(V,T,A2),!.
 
-
+% Rappel : E = Equation. R = Règle de transformation. P = Système d'équations. Q = Système d'équation
+% Unifie(P,S) où S = choix_premier
 
 /* regle(E,R) : Détermine la règle de transformation R qui peut s'appliquer à l'équation E. */
 
