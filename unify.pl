@@ -31,41 +31,41 @@ ocheck(V,T,A) :- A==1 -> arg(1,T,X), occur_check(V,X); arg(A,T,X), occur_check(V
 
 /* regle(E,R) : Détermine la règle de transformation R qui peut s'appliquer à l'équation E. */
 
-regle((X ?= T),rename) :- var(T),!.
+regle((X ?= T), clash) :- compound(X), compound(T), functor(X,_,N1), functor(T,_,N2), N1 \== N2,!;
+        compound(X), compound(T), functor(X,A1,_), functor(T,A2,_), A1 \== A2,!.
 
-regle((X ?= T),simplify) :- atomic(T),!.
+regle((X ?= T),rename) :- var(X), var(T),!.
+
+regle((X ?= T),simplify) :- var(X), atomic(T),!.
 
 regle((X ?= T), check) :- X \== T, occur_check(X,T),!.
 
-regle((X ?= T), expand) :- compound(T), not(occur_check(X,T)),!.
+regle((X ?= T), expand) :- var(X), compound(T), not(occur_check(X,T)),!.
 
 regle((X ?= T), decompose) :- compound(X), compound(T), functor(X,A1,N1), functor(T,A2,N2), A1 == A2, N1 == N2,!.
 
-regle((T ?= X), orient) :- nonvar(T),!.
-
-regle((X ?= T), clash) :- compound(X), compound(T), functor(X,_,N1), functor(T,_,N2), N1 \== N2,!;
-	compound(X), compound(T), functor(X,A1,_), functor(T,A2,_), A1 \== A2,!.
+regle((T ?= X), orient) :- nonvar(T), var(X),!.
 
 
 /* reduit(R,E,P,Q) : Transforme le système d'équations P en le système d'équations Q par application de la règle de transformation R à l'équation E.*/
 
-reduit(R,(X ?= T),P,Q,P1,Q1) :- R==rename, echo(system  : [X ?= T|P]), nl, echo(R), echo( : X ?= T),
-										nl, substitution(X,T,P,P1), Q1=[X=T|Q2] substitution2(X,T,Q,Q2), !.
+reduit(R,(X ?= T),P,Q,P1,Q1) :- R==rename, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T),
+										nl, substitution(X,T,P,P1), Q1=[X=T|Q2], substitution2(X,T,Q,Q2), !.
 
-reduit(R,(X ?= T),P,Q,P1,Q1) :- R==simplify, echo(system  : [X ?= T|P]), nl, echo(R), echo( : X ?= T),
-										nl, substitution(X,T,P,P1), Q1=[X=T|Q2] substitution2(X,T,Q,Q2), !.
+reduit(R,(X ?= T),P,Q,P1,Q1) :- R==simplify, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T),
+										nl, substitution(X,T,P,P1), Q1=[X=T|Q2], substitution2(X,T,Q,Q2), !.
 
-reduit(R,(X ?= T),P,Q,P,Q) :- R==check, echo(system : [X ?= T|P]), nl, echo(R), echo( : X ?= T), nl, fail, !.
+reduit(R,(X ?= T),P,Q,P,Q) :- R==check, echo(system : [X ?= T|P]), nl, echo(R : X ?= T), nl, fail, !.
 
-reduit(R,(X ?= T),P,Q,P1,Q1) :- R==expand, echo(system  : [X ?= T|P]), nl, echo(R), echo( : X ?= T), nl,
-										substitution(X,T,P,P1), Q1=[X=T|Q2] substitution2(X,T,Q,Q2), !.
+reduit(R,(X ?= T),P,Q,P1,Q1) :- R==expand, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T), nl,
+										substitution(X,T,P,P1), Q1=[X=T|Q2], substitution2(X,T,Q,Q2), !.
 
-reduit(R, (X ?= T),P,Q,[T ?= X|P],Q) :- R==orient, echo(system  : [X ?= T|P]), nl, echo(R), echo( : X ?= T), nl, !.
+reduit(R, (X ?= T),P,Q,[T ?= X|P],Q) :- R==orient, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T), nl, !.
 
-reduit(R,(X ?= T),P,Q,P1,Q) :- R==decompose, echo(system  : [X ?= T|P]), nl, echo(R), echo( : X ?= T), nl,
-										functor(X,_,A), liste_arguments(X ?= T,A,[],L), concat(L,P,P1), !.
+reduit(R,(X ?= T),P,Q,P1,Q) :- R==decompose, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T), nl,
+										functor(X,_,A), liste_arguments((X ?= T),A,[],L), concat(L,P,P1), !.
 
-reduit(R,(X ?= T),P,Q,P,Q) :- R==clash, echo(system : [X ?= T|P]), nl, echo(R), echo( : X ?= T), nl, fail, !.
+reduit(R,(X ?= T),P,Q,P,Q) :- R==clash, echo(system : [X ?= T|P]), nl, echo(R : X ?= T), nl, fail, !.
 
 
 
@@ -82,7 +82,7 @@ substitution_argument(X,T,A,N,A2) :- N==1 -> functor(A,NM,AR), arg(1,A,VA), subs
 									functor(A,NM,AR), arg(N,A,VA), substitution_terme(X,T,VA,V), functor(A2,NM,AR), arg(N,A2,V), N2 is (N-1), substitution_argument(X,T,A,N2,A2).
 
 
-liste_arguments(X ?= T,N,L,L2) :- N==1 -> arg(1,X,A), arg(1,T,B), L2=[A ?= B|L],! ;
+liste_arguments((X ?= T),N,L,L2) :- N==1 -> arg(1,X,A), arg(1,T,B), L2=[A ?= B|L],! ;
 									N2 is (N-1), arg(N,X,A), arg(N,T,B), liste_arguments(A ?= B,N2,[A ?= B|L],L2).
 
 concat([],X,X).
@@ -93,4 +93,4 @@ concat([X|Q],Y,[X|P]) :- concat(Q,Y,P).
 unifieRes([],Q) :- nl, print(Q),!.
 unifieRes([X|P],Q) :- regle(X,R), reduit(R,X,P,Q,P1,Q1), unifieRes(P1,Q1).
 unifie([]) :- !.
-unifie([X|P]) :- regle(X,R), reduit(R,X,P,[],P1,Q1), unifieRes(P1,Q1).
+unifie([X|P]) :- set_echo, regle(X,R), reduit(R,X,P,[],P1,Q1), unifieRes(P1,Q1).
