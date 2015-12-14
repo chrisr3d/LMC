@@ -15,9 +15,6 @@ echo(T) :- echo_on, !, write(T).
 echo(_).
 
 
-print(Term) :-
-	current_prolog_flag(print_write_options, Options), !,
-	write_term(Term, Options).
 
 
 /* occur_check(V,T) permet de vérifier si la variable V est contenue dans le terme T */
@@ -34,63 +31,105 @@ ocheck(V,T,A) :- A==1 -> arg(1,T,X), occur_check(V,X); arg(A,T,X), occur_check(V
 regle((X ?= T), clash) :- compound(X), compound(T), functor(X,_,N1), functor(T,_,N2), N1 \== N2,!;
         compound(X), compound(T), functor(X,A1,_), functor(T,A2,_), A1 \== A2,!.
 
-regle((X ?= T),rename) :- var(X), var(T),!.
+regle((_ ?= T),rename) :- var(T),!.
 
-regle((X ?= T),simplify) :- var(X), atomic(T),!.
+regle((_ ?= T),simplify) :- atomic(T),!.
 
 regle((X ?= T), check) :- X \== T, occur_check(X,T),!.
 
-regle((X ?= T), expand) :- var(X), compound(T), not(occur_check(X,T)),!.
+regle((X ?= T), expand) :- compound(T), not(occur_check(X,T)),!.
 
-regle((X ?= T), decompose) :- compound(X), compound(T), functor(X,A1,N1), functor(T,A2,N2), A1 == A2, N1 == N2,!.
+regle((X ?= T), decompose) :- compound(X), compound(T), functor(X,A,N), functor(T,A,N),!.
 
-regle((T ?= X), orient) :- nonvar(T), var(X),!.
+regle((T ?= _), orient) :- nonvar(T),!.
 
 
 /* reduit(R,E,P,Q) : Transforme le système d'équations P en le système d'équations Q par application de la règle de transformation R à l'équation E.*/
+reduit(rename,(X ?= T), P;S, A;[X = T|B]) :- echo(system  : [X ?= T|P]), nl, echo(rename : X ?= T), nl, substitution(X,T,P,A), substitution(X,T,S,B).
 
-reduit(R,(X ?= T),P,Q,P1,Q1) :- R==rename, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T),
-										nl, substitution(X,T,P,P1), Q1=[X=T|Q2], substitution2(X,T,Q,Q2), !.
+reduit(simplify,(X ?= T), P;S, A;[X = T|B]) :- echo(system  : [X ?= T|P]), nl, echo(simplify : X ?= T), nl, substitution(X,T,P,A), substitution(X,T,S,B).
 
-reduit(R,(X ?= T),P,Q,P1,Q1) :- R==simplify, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T),
-										nl, substitution(X,T,P,P1), Q1=[X=T|Q2], substitution2(X,T,Q,Q2), !.
+reduit(check,_,_,_) :- echo(system : [X ?= T|P]), nl, echo(check : X ?= T), nl, fail.
 
-reduit(R,(X ?= T),P,Q,P,Q) :- R==check, echo(system : [X ?= T|P]), nl, echo(R : X ?= T), nl, fail, !.
+reduit(expand,(X ?= T), P;S, A;[X = T|B]) :- echo(system  : [X ?= T|P]), nl, echo(expand : X ?= T), nl,
+substitution(X,T,P,A), substitution(X,T,S,B).
 
-reduit(R,(X ?= T),P,Q,P1,Q1) :- R==expand, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T), nl,
-										substitution(X,T,P,P1), Q1=[X=T|Q2], substitution2(X,T,Q,Q2), !.
+reduit(orient,(X ?= T), P;S, [T ?= X|P];S) :- echo(system  : [X ?= T|P]), nl, echo(orient : X ?= T), nl.
 
-reduit(R, (X ?= T),P,Q,[T ?= X|P],Q) :- R==orient, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T), nl, !.
+reduit(decompose,(X ?= T), P;S, Q;S) :- echo(system  : [X ?= T|P]), nl, echo(decompose : X ?= T), nl,
+decomposer(X,T,L), concat(L,P,Q).
 
-reduit(R,(X ?= T),P,Q,P1,Q) :- R==decompose, echo(system  : [X ?= T|P]), nl, echo(R : X ?= T), nl,
-										functor(X,_,A), liste_arguments((X ?= T),A,[],L), concat(L,P,P1), !.
-
-reduit(R,(X ?= T),P,Q,P,Q) :- R==clash, echo(system : [X ?= T|P]), nl, echo(R : X ?= T), nl, fail, !.
+reduit(clash,_,_,_) :- echo(system : [X ?= T|P]), nl, echo(clash : X ?= T), nl, fail.
 
 
+/* Transorfme une liste d'équations (3ème argument) en remplaçant X par T, pour retourner le résultat dans une liste modifiée (4ème argument) avec les valeurs remplacées */
+substitution(_,_,[],[]).
+substitution(X,T,[A ?= B|P],[A2 ?= B2|P2]) :- substitution_terme(X,T,A,A2), substitution_terme(X,T,B,B2), substitution(X,T,P,P2).
+substitution(X,T, [ A = B |P], [A2 = B2 | P2]) :- substitution_terme(X,T,A,A2), substitution_terme(X,T,B,B2), substitution(X,T,P,P2).
 
-substitution(_,_,[],[]) :- !.
-substitution(X,T,[A ?= B|P],[A2 ?= B2|P2]) :- substitution_terme(X,T,A,A2), substitution_terme(X,T,B,B2),
-												substitution(X,T,P,P2).
-substitution2(_,_,[],[]) :- !.
-substitution2(X,T,[A ?= B|P],[A2 ?= B2|P2]) :- substitution_terme(X,T,A,A2), substitution_terme(X,T,B,B2),
-												substitution2(X,T,P,P2).
-substitution_terme(X,T,A,T) :- not(compound(A)), A==X,!.
-substitution_terme(X,T,A,A) :- not(compound(A)), A\==X,!.
-substitution_terme(X,T,A,A2) :- compound(A), functor(A,_,NA), substitution_argument(X,T,A,NA,A2),!.
-substitution_argument(X,T,A,N,A2) :- N==1 -> functor(A,NM,AR), arg(1,A,VA), substitution_terme(X,T,VA,V), functor(A2,NM,AR), arg(1,A2,V),!;
-									functor(A,NM,AR), arg(N,A,VA), substitution_terme(X,T,VA,V), functor(A2,NM,AR), arg(N,A2,V), N2 is (N-1), substitution_argument(X,T,A,N2,A2).
+/* Remplace le terme A par T si A est égal à X. Si ce n'est pas le cas, et que A n'est pas composé, rien n'est remplacé. Si A n'est pas égal à X mais que A est tout de même composé, on remplace X par T.*/
+substitution_terme(X,T,A,T) :- A==X.
+substitution_terme(X,_,A,A) :- not(compound(A)), A\==X.
+substitution_terme(X,T,A,B) :- A\==X, compound(A), substitutionSousTerme(X,T,A,B).
 
+/* Crée le terme B à partir de A où l'on remplace les X par T. */
+substitutionSousTerme(X,T,A,B) :- functor(A,N,_), creerListe(X,T,A,0,L), B =..[N|L].
 
-liste_arguments((X ?= T),N,L,L2) :- N==1 -> arg(1,X,A), arg(1,T,B), L2=[A ?= B|L],! ;
-									N2 is (N-1), arg(N,X,A), arg(N,T,B), liste_arguments(A ?= B,N2,[A ?= B|L],L2).
+/* On remplace directement X par T. */
+creerListe(_,_,F,N,[]) :- functor(F,_,A), (N>=A).
+/* Lorsque E n'est pas composé. */
+creerListe(X,T,F,N,[E|L]) :- N2 is N+1, arg(N2,F,E), (E\==X), not(compound(E)), creerListe(X,T,F,N2,L).
+/* E est composé, on rappelle substitutionSousTerme sur E pour y substituer les X aux T */
+creerListe(X,T,F,N,[G|L]) :- N2 is N+1, arg(N2,F,E), (E\==X), compound(E), substitutionSousTerme(X,T,E,G), creerListe(X,T,F,N2,L).
+/* On avance dans la liste. */
+creerListe(X,T,F,N,[T|L]) :- N2 is N+1, arg(N2,F,E), (E==X), creerListe(X,T,F,N2,L).
 
+/* A partir d'une équation de la forme f(X1,...,Xn) ?= f(Y1,...,Yn), on décompose élément par élément l'équation pour renvoyer une liste d'égalités de la forme [X1 ?= Y1, ... , Xn ?= Yn] */
+decomposer(T,X,L) :- decomposition(T,X,0,L). 
+decomposition(T,_,N,[]) :- functor(T,_,N).
+decomposition(T,X,N,[A ?= B|L]) :- N2 is N+1, arg(N2,T,A), arg(N2,X,B), decomposition(T,X,N2,L).
+
+/* Concaténation de deux listes */
 concat([],X,X).
-concat([X|Q],Y,[X|P]) :- concat(Q,Y,P).
+concat([X|P],Y,[X|Q]) :- concat(P,Y,Q).
 
+/* Force l'identification => c'est ce qui permet à la fin d'afficher les valeurs des variables et non le nom que leur a donné le système */
+ident([]).
+ident([ X = X | T]) :- ident(T).
 
+/* Poids de chaque règle selon l'énoncé*/
+poidRegle(clash,5).
+poidRegle(check,5).
+poidRegle(rename,4).
+poidRegle(simplify,4).
+poidRegle(orient,3).
+poidRegle(decompose,2).
+poidRegle(expand,1).
 
-unifieRes([],Q) :- nl, print(Q),!.
-unifieRes([X|P],Q) :- regle(X,R), reduit(R,X,P,Q,P1,Q1), unifieRes(P1,Q1).
-unifie([]) :- !.
-unifie([X|P]) :- set_echo, regle(X,R), reduit(R,X,P,[],P1,Q1), unifieRes(P1,Q1).
+/* A partir d'une liste d'équations, on renvoie l'équation dotée de la règle de plus haut poids
+et la liste des équations restantes (non triées) ainsi que la règle associée */
+choix_pondere([H|T],Q,F,R) :- regle(H,RE), poidRegle(RE,W), selectEqu1(T,Q,F,H,W,R,RE).
+/*liste param :
+1 : liste d'équations de départ
+2 : liste d'équations finales
+3 : équation résultat
+4 : var de travail pour l'équation
+5 : var de travail pour le poids
+6 : résultat règle
+7 : var de travail regle*/
+selectEqu1([],[],E,E,_,R,R) :- !.
+/* si on a déjà trouvé une règle de poids maximal, on arrête le parcours de la liste. */
+selectEqu1(Q,Q,E,E,W,R,R) :- W >= 5, !.
+selectEqu1([H|T],[H|Q],F,E,M,S,R) :- regle(H,RE), poidRegle(RE,W), (W =< M), selectEqu1(T,Q,F,E,M,S,R).
+selectEqu1([H|T],[E|Q],F,E,M,S,_) :- regle(H,RE), poidRegle(RE,W), (W > M),  selectEqu1(T,Q,F,H,W,S,RE). 
+
+/* Fonction choix_premier : renvoi simplement la règle qui s'applique à la première
+équation du système */
+choix_premier([E|P],P,E,R) :- regle(E,R).
+	
+
+unifie(P,S) :- set_echo, sousUnifie(P;[],S). 
+
+sousUnifie([];S,_) :- ident(S).
+sousUnifie(P;S,choix_premier) :- choix_premier(P,Z,E,R), reduit(R,E,Z;S,Q), sousUnifie(Q,choix_premier).
+sousUnifie(P;S,choix_pondere) :- choix_pondere(P,Z,E,R), reduit(R,E,Z;S,Q), sousUnifie(Q,choix_pondere).
