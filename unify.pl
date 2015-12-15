@@ -130,7 +130,9 @@ choix_premier([E|P],P,E,R) :- regle(E,R).
 	
 
 unifie(P,S) :- set_echo, sousUnifie(P;[],S). 
-
+unifie(P) :- set_echo, sousUnifie(P;[]).
+sousUnifie([];S) :- ident(S).
 sousUnifie([];S,_) :- ident(S).
+sousUnifie(P;S) :- choix_premier(P,Z,E,R), reduit(R,E,Z;S,Q), sousUnifie(Q,choix_premier).
 sousUnifie(P;S,choix_premier) :- choix_premier(P,Z,E,R), reduit(R,E,Z;S,Q), sousUnifie(Q,choix_premier).
 sousUnifie(P;S,choix_pondere) :- choix_pondere(P,Z,E,R), reduit(R,E,Z;S,Q), sousUnifie(Q,choix_pondere).
