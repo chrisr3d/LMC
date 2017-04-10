@@ -119,6 +119,7 @@ choix_pondere([H|T],Q,F,R) :- regle(H,RE), poidRegle(RE,W), selectEqu1(T,Q,F,H,W
 6 : résultat règle
 7 : var de travail regle*/
 selectEqu1([],[],E,E,_,R,R) :- !.
+
 /* si on a déjà trouvé une règle de poids maximal, on arrête le parcours de la liste. */
 selectEqu1(Q,Q,E,E,W,R,R) :- W >= 5, !.
 selectEqu1([H|T],[H|Q],F,E,M,S,R) :- regle(H,RE), poidRegle(RE,W), (W =< M), selectEqu1(T,Q,F,E,M,S,R).
